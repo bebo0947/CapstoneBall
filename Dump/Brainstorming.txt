@@ -1,0 +1,75 @@
+                                     
+                                       ##### Webscraping plan: #####
+
+Scrape position (and potentially age, country, and other data) data, either from FBref or TransferMrkt.com 
+- associating player name with position
+
+Scrape European data for as far back as 2017/2018
+- this will leave us with 2024 / 2025 - 2017/2018 csv files  ~ 8 sheets
+- for each of those csv, clean it up in whatever way necessary
+join them together, ensuring we store each year as a different version of each player.
+- at approximately 3000 players per year, this would mean the main sheet has 
+  approximately 8 * 3,000 = 24,000 rows, each one being an annual version of a player. 
+
+Join the two tables together, giving the players more detailed position data than the 
+  original FBref position data. 
+
+
+So our final sheet will have 24,000 rows, each row representing a version of a player 
+  from a specific season. 
+Need to figure out what to do with players are too young. 0s for the empty seasons
+  Nvm, recall that the rows we are getting is by year, so only players that existed 
+  at that time would have entries (so a player that is too young for an earlier year, 
+  or a player that is retired for a later year just wouldn't have a version of that 
+  player)
+
+                                        ##### Big Picture #####
+How I see the model working:
+  For all the players, we use our model to predict the players next season. 
+  Next, we compare that predicted next season to the 'avg' of the inputted players
+    recent (??) seasons. I guess for each player, we generate some kind of RSS to see
+    how far off the potential choice is from the inputted player. I assume this RSS 
+    will give different weights to different stats / residuals based on position?
+  Pick the player that minimizes the RSS
+
+
+                                   ##### The potential use cases: #####
+
+player is injured and we need a quick replacement
+player contract is ending and we need a permanent replacement
+even just trying to frame the potential career of young players. 
+  
+
+                                         ##### Resources: #####
+
+Small cases: FBref compare player option. 
+             We can use this to test the RSS techniques 
+Transfermarkt: Get position data
+               Age data
+               Injury data
+               Transfer data
+               Trophy data ??
+               Value data??
+EA Career Mode: Try and figure out how they try to predict players potentials.  
+
+
+
+                                          ##### Problems: #####
+Webscraping vs excel
+getting precise position data => labour intensive joining
+  - Webscraping Transfermarkt.com and joining it with FBref data
+what does 'replace' mean      => mathematically intensive
+  - Example, how do we formalize vini replacing ronaldo
+  - Example, Real madrid midfield
+  - Example, barcas inability to replace messi e.g ansu fati
+what does 'similar' mean      => football intensive
+  - predict a players next season, 
+    then find RSS between that predicted season and inputted players recent seasons
+    then find the player that minimizes it
+Enumerating positions
+  - does it make sense to maintain the order of positions the further up the field you go?
+
+
+
+
+
