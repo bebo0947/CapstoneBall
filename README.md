@@ -1,6 +1,6 @@
 # CAPSTONE DEMO README
 
-### Describe your project (big idea)
+### Describe your project (big idea) Footy
 
 ### Describe your goal
 
