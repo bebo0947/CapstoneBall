@@ -41,7 +41,7 @@ even just trying to frame the potential career of young players.
   
 
                                          ##### Resources: #####
-
+Example link: https://fbref.com/en/comps/Big5/2023-2024/stats/players/2023-2024-Big-5-European-Leagues-Stats
 Small cases: FBref compare player option. 
              We can use this to test the RSS techniques 
 Transfermarkt: Get position data
@@ -68,6 +68,8 @@ what does 'similar' mean      => football intensive
     then find the player that minimizes it
 Enumerating positions
   - does it make sense to maintain the order of positions the further up the field you go?
+Players with the same name
+  - Hash based on player name, nation and birthyear
 
 
 
