@@ -7,7 +7,7 @@ A machine learning project studying player similarity.
 Create an ML algorithm that, given a player, will return the player whose projected future is most similar to that player. 
 
 ### Describe your data
-Data comes from FBref.com
+Data comes from FBref.com__
 Data comes from seasons spanning 2017/18 season to 2023/24 season in categories standard, shooting, passing, passing types, possession, Goal Creation, playing time
 
 ### Describe your work (models, analysis, EDA, etc.)
