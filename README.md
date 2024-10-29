@@ -19,7 +19,9 @@ More granularly, the overall table has ~20,000 rows and ~140 columns <br>
 Major EDA elements:
  - Background info: The data came from 49 different webpages for 7 years, each year with 7 categories <br>
  - Webscraping: I started by scraping a singular category from a single year. Then I looped over the years and categories into separate dataframes. <br>
- - EDA: I created files for each year (such that there is one datapoint for each player in each csv) and also a master spreadsheet that contains all the data and approximately has shape 20,000x140.
+ - EDA: I created files for each year (such that there is one datapoint for each player in each csv) and also a master spreadsheet that contains all the data and approximately has shape 20,000x140. <br>
+ - EDA: When creating the master csv, I ensured that redundant columns were removed as well as removing unnecessary columns. <br>
+ - EDA: I mapped the position data on a scale from 0-7 to indicate how far forward the player plays (Goalie at 0, Forwards at 7)
 
 #### Plan for the future:
 I will require two models:
