@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup as bs
 import pandas as pd
 import requests
-import urllib.request
 from io import StringIO
+import os
 
 pd.options.display.max_columns = None
 pd.set_option('display.width', 1000)
@@ -32,7 +32,8 @@ def get_raw_df(year: str, cat: str) -> pd.DataFrame:
     :param cat: Category. should be a key from the global dictionary above.
     :return: dirty dataframe.
     """
-    while True:
+    needs_repeat = True
+    while needs_repeat:
         try:
             url = make_url(year, cat)
             response = requests.get(url)
@@ -46,10 +47,12 @@ def get_raw_df(year: str, cat: str) -> pd.DataFrame:
             print('table found, reading to html')
             df = pd.read_html(StringIO(str(table)))[0]
 
-            return df
+            needs_repeat = False
 
         except:
             pass
+    df['Season'] = year[:4]
+    return df
 
 
 def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -73,19 +76,6 @@ def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
     indicies = df.loc[df['Rk'] == 'Rk'].index
     df.drop(indicies, inplace=True)
     return df
-
-
-def get_data_to_csv(df: pd.DataFrame) -> None:
-    """
-    Given a cleaned FBRef dataframe, create a csv for it
-    :param df: cleaned df
-    :return: Creates the file, returns nothing
-    """
-    # TODO figure out file name format.
-    file_name = 'Test_csv'
-    df.to_csv(f'{file_name}.csv', index=False)
-    print('file written')
-    print(df.head())
 
 
 """
@@ -134,6 +124,22 @@ for year in years:
 EEAAO = finals[0].copy()
 for f in finals[1:]:
     EEAAO = pd.concat([EEAAO, f], axis=0)
+
+# now we need to eliminate the Nan Columns below
+# EEAAO.loc[EEAAO['Nation'].isna()]
+# EEAAO.loc[EEAAO['Born'].isna()]
+# EEAAO.loc[EEAAO['Name'].isna()] ??
+# Combine the above tod drop them
+
+EEAAO = pd.read_csv('../data/eeaao.csv')
+os.remove('../data/eeaao.csv')
+
+EEAAO = EEAAO.drop(EEAAO.loc[(EEAAO['Nation'].isna()) | (EEAAO['Born'].isna())].index)
+
+# Nulls have been removed
+# Hashing each player in the following format: {name}-{Nation[-3:]}-{Birthyear}
+EEAAO['p_id'] = EEAAO.loc[:, 'Player'] + '-' + EEAAO.loc[:, 'Nation'].str.slice(-3) + '-' + EEAAO.loc[:, 'Born'].astype(int).astype(str)
+
 EEAAO.to_csv('../data/eeaao.csv')
 
 
