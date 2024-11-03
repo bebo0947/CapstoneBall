@@ -1,3 +1,5 @@
+import traceback
+
 from bs4 import BeautifulSoup as bs
 import pandas as pd
 import requests
@@ -47,12 +49,13 @@ def get_raw_df(year: str, cat: str) -> pd.DataFrame:
             print('table found, reading to html')
             df = pd.read_html(StringIO(str(table)))[0]
 
-            needs_repeat = False
+            df = pd.concat([pd.DataFrame([year] * df.shape[0], columns=[('Unnamed', 'Season')]), df], axis=1)
 
-        except:
-            pass
-    df['Season'] = year[:4]
-    return df
+            return df
+
+        except Exception as e:
+            print('There was a problem...')
+            traceback.print_exc()
 
 
 def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -67,10 +70,13 @@ def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         if col[0][:7] == 'Unnamed':
             cols.append(col[1])
+        elif col[1] == 'Season':
+            cols.append('Season')
         else:
             cols.append(f'{col[0]}, {col[1]}')
 
     df = df.set_axis(cols, axis='columns')
+    df = df.drop(df.loc[(df['Nation'].isna()) | (df['Born'].isna())].index)
 
     # Get rid of those annoying rows
     indicies = df.loc[df['Rk'] == 'Rk'].index
@@ -106,15 +112,23 @@ for cat in cats:
             dfs[year] = [d]
 
 
+
 # Want to create a df for each year (combining all of the cats) then writing to a file
 finals = []
 for year in years:
-    dflst = dfs[year]
+    dflst = dfs[year]  # a list of dataframes for this year
     final = dflst[0].copy()  # initialize running total df
-    for df in dflst[1:]:  # iterate over the rest of the dfs
+
+    for df in dflst[1:]:  # iterate over the rest of the dfs by category
         # Concatenate the current df to the right side of the running df
-        cleaned = df.iloc[:, 9:]
+        cleaned = df.iloc[:, 9:].copy()
         final = pd.concat([final, cleaned], axis=1)
+    # Data gathered, now remove NAN players, prepend playerid column and season start year
+
+    pids = pd.DataFrame(final.loc[:, 'Player'] +
+                        '-' + final.loc[:, 'Nation'].str.slice(-3) +
+                        '-' + final.loc[:, 'Born'].astype(int).astype(str), columns=['p_id'])
+    final = pd.concat([pids, final], axis=1)
     print(f'Completed {year} compilation, gonna write.')
     finals.append(final)
     # big table complete, just write to file.
@@ -125,20 +139,6 @@ EEAAO = finals[0].copy()
 for f in finals[1:]:
     EEAAO = pd.concat([EEAAO, f], axis=0)
 
-# now we need to eliminate the Nan Columns below
-# EEAAO.loc[EEAAO['Nation'].isna()]
-# EEAAO.loc[EEAAO['Born'].isna()]
-# EEAAO.loc[EEAAO['Name'].isna()] ??
-# Combine the above tod drop them
-
-EEAAO = pd.read_csv('../data/eeaao.csv')
-os.remove('../data/eeaao.csv')
-
-EEAAO = EEAAO.drop(EEAAO.loc[(EEAAO['Nation'].isna()) | (EEAAO['Born'].isna())].index)
-
-# Nulls have been removed
-# Hashing each player in the following format: {name}-{Nation[-3:]}-{Birthyear}
-EEAAO['p_id'] = EEAAO.loc[:, 'Player'] + '-' + EEAAO.loc[:, 'Nation'].str.slice(-3) + '-' + EEAAO.loc[:, 'Born'].astype(int).astype(str)
 
 EEAAO.to_csv('../data/eeaao.csv')
 
