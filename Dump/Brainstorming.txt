@@ -55,9 +55,7 @@ EA Career Mode: Try and figure out how they try to predict players potentials.
 
 
                                           ##### Problems: #####
-Webscraping vs excel
-getting precise position data => labour intensive joining
-  - Webscraping Transfermarkt.com and joining it with FBref data
+
 what does 'replace' mean      => mathematically intensive
   - Example, how do we formalize vini replacing ronaldo
   - Example, Real madrid midfield
@@ -66,10 +64,15 @@ what does 'similar' mean      => football intensive
   - predict a players next season, 
     then find RSS between that predicted season and inputted players recent seasons
     then find the player that minimizes it
-Enumerating positions
-  - does it make sense to maintain the order of positions the further up the field you go?
-Players with the same name
-  - Hash based on player name, nation and birthyear
+
+
+
+
+                                           ##### Models #####
+
+Using Position and Age to try and predict the number of 90s/minutes played. 
+
+
 
 
 
