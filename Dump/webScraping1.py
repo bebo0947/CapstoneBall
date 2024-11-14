@@ -1,5 +1,6 @@
 import traceback
 
+import numpy as np
 from bs4 import BeautifulSoup as bs
 import pandas as pd
 import requests
@@ -10,7 +11,8 @@ pd.options.display.max_columns = None
 pd.set_option('display.width', 1000)
 
 years = ['2017-2018', '2018-2019', '2019-2020', '2020-2021', '2021-2022', '2022-2023', '2023-2024']
-cats = ['stats', 'shooting', 'passing', 'passing_types', 'gca', 'defense', 'possession']  # , 'playingtime', 'misc']
+cats = ['stats', 'shooting', 'passing', 'passing_types', 'gca', 'defense', 'possession', 'playingtime']  # , 'misc']
+# cats = ['stats', 'shooting', 'passing']  # , 'passing_types', 'gca', 'defense', 'possession', 'playingtime', 'misc']
 cat_d = {'stats': 'stats_standard',
          'misc': 'stats_misc',
          'playingtime': 'stats_playing_time',
@@ -50,7 +52,7 @@ def get_raw_df(year: str, cat: str) -> pd.DataFrame:
             df = pd.read_html(StringIO(str(table)))[0]
 
             df = pd.concat([pd.DataFrame([year] * df.shape[0], columns=[('Unnamed', 'Season')]), df], axis=1)
-
+            print(f'nrows: {df.shape[0]}')
             return df
 
         except Exception as e:
@@ -76,11 +78,17 @@ def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
             cols.append(f'{col[0]}, {col[1]}')
 
     df = df.set_axis(cols, axis='columns')
-    df = df.drop(df.loc[(df['Nation'].isna()) | (df['Born'].isna())].index)
 
     # Get rid of those annoying rows
     indicies = df.loc[df['Rk'] == 'Rk'].index
     df.drop(indicies, inplace=True)
+
+    df = df.drop(df.loc[(df['Nation'].isna())].index)  # Drop where Nation is NAN
+    df = df.drop(df.loc[(df['Born'].isna())].index)  # Drop where Born is NAN
+    if 'Playing Time, Min' in cols:
+        df = df.drop(df.loc[(df['Playing Time, Min'].isna())].index)  # Drop where Minutes is NAN
+    print(f'nrows clean: {df.shape[0]}')
+
     return df
 
 
@@ -96,21 +104,27 @@ raw_cols = set()
 
 dfs = {}  # year: [df_by_cat]
 counter = 0
-for cat in cats:
-    for year in years:
+for year in years:
+    for cat in cats:
         counter += 1
         print(counter, year, cat)
-        d = consolidate_columns(get_raw_df(year, cat))
+        d = consolidate_columns(get_raw_df(year, cat))  # Removal of NANs here
         d = d.drop(columns=['Rk', 'Matches'])  # remove unnecessary columns then maps positions.
         d['Pos'] = d['Pos'].map({'GK': 0, 'DF': 1, 'DF,MF': 2,
                                  'MF,DF': 3, 'MF': 4, 'MF,FW': 5,
                                  'FW,MF': 6, 'FW': 7,
                                  'FW,DF': 5.5, 'DF,FW': 1.5})
+
         if year in dfs.keys():
             dfs[year].append(d)
         else:
             dfs[year] = [d]
 
+        d.to_csv(f'../data/by_cat/{year}_{cat}')
+
+print('--- Webscraping Complete ---')
+
+# Need to drop non-players (players whose Playing Time, Min == Nan)
 
 
 # Want to create a df for each year (combining all of the cats) then writing to a file
@@ -119,11 +133,18 @@ for year in years:
     dflst = dfs[year]  # a list of dataframes for this year
     final = dflst[0].copy()  # initialize running total df
 
+    # Remove the playing time stats in the standard stats category.
+    dupes = [col for col in final.columns if 'playing time' in col.lower()]
+    df.drop(columns=dupes, inplace=True)
+
     for df in dflst[1:]:  # iterate over the rest of the dfs by category
         # Concatenate the current df to the right side of the running df
+        print(final.shape)
         cleaned = df.iloc[:, 9:].copy()
         final = pd.concat([final, cleaned], axis=1)
     # Data gathered, now remove NAN players, prepend playerid column and season start year
+    # get rows of NaNs
+    final.drop(final.loc[(df['Born'].isna())].index, inplace=True)  # Drop where Born is NAN
 
     pids = pd.DataFrame(final.loc[:, 'Player'] +
                         '-' + final.loc[:, 'Nation'].str.slice(-3) +
@@ -174,4 +195,19 @@ Instances of NaNs
 2153   Marco Pellegrino    NaN  1.0  Salernitana     it Serie A  NaN              10                   5              545              6.1               0               0               0                0              0                 0                1                0         0.0           0.0          0.0               0.1                0                7                1               0.00               0.00               0.00                0.00                  0.00              0.01               0.01                  0.01                0.01                    0.01            0           2            0           0.0           0.33            0.00          0.00            NaN          11.9           0           0              0         0.0           0.0             0.02           0.0              0.0       211       256       82.4          3754          1365        83        94       88.3        112        126        88.9       16       33      48.5   0  0.0         0.0   
 2154   Marco Pellegrino
 """
+
+"""
+Code for checking playing time issues. 
+for season in dfs.keys():
+    numnullsb = dfs[season][-1]['Playing Time, Min'].isna().sum()
+    numnullsg = dfs[season][0]['Playing Time, Min'].isna().sum()
+    numzg = (dfs[season][0]['Playing Time, Min'] == 0).sum()
+    numzb = (dfs[season][0]['Playing Time, Min'] == 0).sum()
+    nrowsg = dfs[season][0].shape[0]
+    nrowsb = dfs[season][-1].shape[0]
+    print(f'--- {season} ---')
+    print(f'Nulls: g-{numnullsg}, b-{numnullsb}')
+    print(f'Zeroes: g-{numzg}, b-{numzb}')
+    print(f'Num Extra Rows: {nrowsb - nrowsg}')
+    """
 
