@@ -5,13 +5,12 @@ from bs4 import BeautifulSoup as bs
 import pandas as pd
 import requests
 from io import StringIO
-import os
 
 pd.options.display.max_columns = None
 pd.set_option('display.width', 1000)
 
 years = ['2017-2018', '2018-2019', '2019-2020', '2020-2021', '2021-2022', '2022-2023', '2023-2024']
-cats = ['stats', 'shooting', 'passing', 'passing_types', 'gca', 'defense', 'possession', 'playingtime']  # , 'misc']
+cats = ['stats', 'playingtime', 'shooting', 'passing', 'passing_types', 'gca', 'defense', 'possession']  # , 'misc']
 # cats = ['stats', 'shooting', 'passing']  # , 'passing_types', 'gca', 'defense', 'possession', 'playingtime', 'misc']
 cat_d = {'stats': 'stats_standard',
          'misc': 'stats_misc',
@@ -53,11 +52,16 @@ def get_raw_df(year: str, cat: str) -> pd.DataFrame:
 
             df = pd.concat([pd.DataFrame([year] * df.shape[0], columns=[('Unnamed', 'Season')]), df], axis=1)
             print(f'nrows: {df.shape[0]}')
-            return df
+
+            needs_repeat = False  # No connection issues, Can exit loop
 
         except Exception as e:
             print('There was a problem...')
             traceback.print_exc()
+
+    if cat == 'playingtime': print('must remove NaN')
+
+    return df
 
 
 def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -85,8 +89,10 @@ def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.drop(df.loc[(df['Nation'].isna())].index)  # Drop where Nation is NAN
     df = df.drop(df.loc[(df['Born'].isna())].index)  # Drop where Born is NAN
-    if 'Playing Time, Min' in cols:
-        df = df.drop(df.loc[(df['Playing Time, Min'].isna())].index)  # Drop where Minutes is NAN
+    if 'Starts, Starts' in cols:
+        print('Removing NaNs')
+        df.drop(df.loc[df['Playing Time, MP'].astype(int) == 0].index, inplace=True)
+        df.reset_index(drop=True, inplace=True)
     print(f'nrows clean: {df.shape[0]}')
 
     return df
@@ -98,7 +104,6 @@ def consolidate_columns(df: pd.DataFrame) -> pd.DataFrame:
  'FW,MF': 6, 'FW': 7,
  'FW,DF': 5.5, 'DF,FW': 1.5}
 """
-
 u_cols = {}
 raw_cols = set()
 
@@ -124,18 +129,54 @@ for year in years:
 
 print('--- Webscraping Complete ---')
 
-# Need to drop non-players (players whose Playing Time, Min == Nan)
-
 
 # Want to create a df for each year (combining all of the cats) then writing to a file
 finals = []
 for year in years:
-    dflst = dfs[year]  # a list of dataframes for this year
-    final = dflst[0].copy()  # initialize running total df
+    # create loop iterating over all categories
+    final = pd.read_csv(f'../data/by_cat/{year}_stats')
+    for cat in cats[1:]:
+        temp = pd.read_csv(f'../data/by_cat/{year}_{cat}')
+        if cat == 'playingtime': temp = temp.iloc[:, 9:]
+        else: temp = temp.iloc[:, 10:]
+        final = pd.concat([final, temp], axis=1)
+
+    # Data gathered, now remove NAN players, prepend playerid column and season start year
+    # get rows of NaNs
+    # fixme final.drop(final.loc[final['Born'].isna()].index, inplace=True)  # Drop where Born is NAN
+
+    pids = pd.DataFrame(final.loc[:, 'Player'] +
+                        '-' + final.loc[:, 'Nation'].str.slice(-3) +
+                        '-' + final.loc[:, 'Born'].astype(int).astype(str), columns=['p_id'])
+
+    final = pd.concat([pids, final], axis=1)
+    print(f'Completed {year} compilation, gonna write.')
+    finals.append(final)
+    # big table complete, just write to file.
+    final.to_csv(f'../data/by_year/{year}-data.csv')
+
+# consolidate all of the by_year dfs into one massive one
+EEAAO = finals[0].copy()
+for f in finals[1:]:
+    EEAAO = pd.concat([EEAAO, f], axis=0)
+
+EEAAO.drop(columns=['Unnamed: 0'])
+
+EEAAO.to_csv('../data/eeaao.csv')
+
+
+
+# Need to drop non-players (players whose Playing Time, Min == Nan)
+"""
+# Want to create a df for each year (combining all of the cats) then writing to a file
+finals = []
+for year in years:
+    dflst = dfs[year]  # a list of dataframes for this year # DONE GOOD DATA
+    final = dflst[0].copy()  # initialize running total df  # DONE BAD DATA
 
     # Remove the playing time stats in the standard stats category.
     dupes = [col for col in final.columns if 'playing time' in col.lower()]
-    df.drop(columns=dupes, inplace=True)
+    # TODO Remove this once everything is figured out. final.drop(columns=dupes, inplace=True)
 
     for df in dflst[1:]:  # iterate over the rest of the dfs by category
         # Concatenate the current df to the right side of the running df
@@ -144,7 +185,7 @@ for year in years:
         final = pd.concat([final, cleaned], axis=1)
     # Data gathered, now remove NAN players, prepend playerid column and season start year
     # get rows of NaNs
-    final.drop(final.loc[(df['Born'].isna())].index, inplace=True)  # Drop where Born is NAN
+    final.drop(final.loc[(final['Born'].isna())].index, inplace=True)  # Drop where Born is NAN
 
     pids = pd.DataFrame(final.loc[:, 'Player'] +
                         '-' + final.loc[:, 'Nation'].str.slice(-3) +
@@ -163,7 +204,7 @@ for f in finals[1:]:
 
 EEAAO.to_csv('../data/eeaao.csv')
 
-
+"""
 def fetch(struct: dict, year: str, cat: str) -> pd.DataFrame:
     dflst = struct[year]
     i = cats.index(cat)
