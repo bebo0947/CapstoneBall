@@ -30,6 +30,8 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+*.png
+*.gif
 
 # Large data files
 *.parquet
