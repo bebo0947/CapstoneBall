@@ -1,7 +1,7 @@
 # CAPSTONE DEMO README
 
 ### Describe your project (big idea)
-A machine learning project studying player similarity.
+A machine learning project studying player similarity. Inspired by 'Moneyball' and the Liverpool/FSG way
 
 ### Describe your goal
 Create an ML algorithm that, given a player, will return the player whose projected future is most similar to that player. 
